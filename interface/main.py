@@ -7,7 +7,11 @@ from functools import lru_cache
 import requests
 from io import StringIO
 
-app = Flask(__name__)
+# Configure Flask with explicit static paths for Vercel
+app = Flask(__name__,
+            static_folder='static',
+            static_url_path='/static',
+            template_folder='templates')
 
 # GitHub raw URL base path
 GITHUB_BASE_URL = "https://raw.githubusercontent.com/natyavidhan/uidai-hackathon/master/datasets"

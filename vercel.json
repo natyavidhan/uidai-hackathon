@@ -8,12 +8,14 @@
   ],
   "routes": [
     {
-      "src": "/static/(.*)",
-      "dest": "interface/static/$1"
-    },
-    {
       "src": "/(.*)",
       "dest": "interface/main.py"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/interface/main.py"
     }
   ]
 }

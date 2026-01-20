@@ -1,25 +1,46 @@
 from flask import Flask, render_template, request, jsonify
 import json
 import os
+import pandas as pd
 import glob
 from functools import lru_cache
+import requests
+from io import StringIO
 
 app = Flask(__name__)
 
-# Dataset paths
+# GitHub raw URL base path
+GITHUB_BASE_URL = "https://raw.githubusercontent.com/natyavidhan/uidai-hackathon/master/datasets"
+
+# For local development, fallback to local files
 DATASETS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'datasets')
-PRECOMPUTED_DATA_PATH = os.path.join(os.path.dirname(__file__), 'static', 'data')
+USE_REMOTE = os.environ.get('VERCEL', False) or os.environ.get('USE_REMOTE', 'false').lower() == 'true'
 
-# Check if running in Vercel (serverless) environment or with pre-computed data
-USE_PRECOMPUTED = os.environ.get('VERCEL') or os.path.exists(os.path.join(PRECOMPUTED_DATA_PATH, 'district_aggregates.json'))
+def load_csv_from_url(url):
+    """Load CSV from URL"""
+    try:
+        print(f"Fetching {url}")
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        return pd.read_csv(StringIO(response.text))
+    except Exception as e:
+        print(f"Error loading {url}: {e}")
+        return pd.DataFrame()
 
-if not USE_PRECOMPUTED:
-    import pandas as pd
+def load_all_csv_files_remote(folder_name, file_list):
+    """Load and concatenate CSV files from GitHub raw URLs"""
+    dfs = []
+    for filename in file_list:
+        url = f"{GITHUB_BASE_URL}/{folder_name}/{filename}"
+        df = load_csv_from_url(url)
+        if not df.empty:
+            dfs.append(df)
+    if dfs:
+        return pd.concat(dfs, ignore_index=True)
+    return pd.DataFrame()
 
-def load_all_csv_files(folder_path):
-    """Load and concatenate all CSV files from a folder"""
-    if USE_PRECOMPUTED:
-        return None
+def load_all_csv_files_local(folder_path):
+    """Load and concatenate all CSV files from a local folder"""
     csv_files = glob.glob(os.path.join(folder_path, '*.csv'))
     dfs = []
     for f in csv_files:
@@ -33,49 +54,43 @@ def load_all_csv_files(folder_path):
     return pd.DataFrame()
 
 @lru_cache(maxsize=1)
-def load_precomputed_aggregates():
-    """Load pre-computed aggregates from JSON file"""
-    aggregates_file = os.path.join(PRECOMPUTED_DATA_PATH, 'district_aggregates.json')
-    with open(aggregates_file, 'r') as f:
-        return json.load(f)
-
-@lru_cache(maxsize=1)
-def load_precomputed_time_series():
-    """Load pre-computed time series from JSON file"""
-    time_series_file = os.path.join(PRECOMPUTED_DATA_PATH, 'time_series.json')
-    if os.path.exists(time_series_file):
-        with open(time_series_file, 'r') as f:
-            return json.load(f)
-    return {}
-
-@lru_cache(maxsize=1)
-def load_precomputed_summary():
-    """Load pre-computed summary stats from JSON file"""
-    summary_file = os.path.join(PRECOMPUTED_DATA_PATH, 'summary_stats.json')
-    if os.path.exists(summary_file):
-        with open(summary_file, 'r') as f:
-            return json.load(f)
-    return {}
-
-@lru_cache(maxsize=1)
 def load_datasets():
-    """Load all datasets and return as a dictionary"""
-    if USE_PRECOMPUTED:
-        return None
+    """Load all datasets from GitHub or local files"""
+    print(f"Loading datasets... (USE_REMOTE={USE_REMOTE})")
     
-    print("Loading datasets...")
-    
-    # Load enrolment data
-    enrolment_path = os.path.join(DATASETS_PATH, 'api_data_aadhar_enrolment')
-    enrolment_df = load_all_csv_files(enrolment_path)
-    
-    # Load demographic data
-    demographic_path = os.path.join(DATASETS_PATH, 'api_data_aadhar_demographic')
-    demographic_df = load_all_csv_files(demographic_path)
-    
-    # Load biometric data
-    biometric_path = os.path.join(DATASETS_PATH, 'api_data_aadhar_biometric')
-    biometric_df = load_all_csv_files(biometric_path)
+    if USE_REMOTE:
+        # Load from GitHub raw URLs
+        enrolment_files = [
+            'api_data_aadhar_enrolment_0_500000.csv',
+            'api_data_aadhar_enrolment_500000_1000000.csv',
+            'api_data_aadhar_enrolment_1000000_1006029.csv'
+        ]
+        demographic_files = [
+            'api_data_aadhar_demographic_0_500000.csv',
+            'api_data_aadhar_demographic_500000_1000000.csv',
+            'api_data_aadhar_demographic_1000000_1500000.csv',
+            'api_data_aadhar_demographic_1500000_2000000.csv',
+            'api_data_aadhar_demographic_2000000_2071700.csv'
+        ]
+        biometric_files = [
+            'api_data_aadhar_biometric_0_500000.csv',
+            'api_data_aadhar_biometric_500000_1000000.csv',
+            'api_data_aadhar_biometric_1000000_1500000.csv',
+            'api_data_aadhar_biometric_1500000_1861108.csv'
+        ]
+        
+        enrolment_df = load_all_csv_files_remote('api_data_aadhar_enrolment', enrolment_files)
+        demographic_df = load_all_csv_files_remote('api_data_aadhar_demographic', demographic_files)
+        biometric_df = load_all_csv_files_remote('api_data_aadhar_biometric', biometric_files)
+    else:
+        # Load from local files
+        enrolment_path = os.path.join(DATASETS_PATH, 'api_data_aadhar_enrolment')
+        demographic_path = os.path.join(DATASETS_PATH, 'api_data_aadhar_demographic')
+        biometric_path = os.path.join(DATASETS_PATH, 'api_data_aadhar_biometric')
+        
+        enrolment_df = load_all_csv_files_local(enrolment_path)
+        demographic_df = load_all_csv_files_local(demographic_path)
+        biometric_df = load_all_csv_files_local(biometric_path)
     
     print(f"Loaded {len(enrolment_df)} enrolment records")
     print(f"Loaded {len(demographic_df)} demographic records")
@@ -90,9 +105,6 @@ def load_datasets():
 @lru_cache(maxsize=1)
 def compute_district_aggregates():
     """Compute district-level aggregated metrics"""
-    if USE_PRECOMPUTED:
-        return load_precomputed_aggregates()
-    
     datasets = load_datasets()
     
     enrolment_df = datasets['enrolment']
@@ -251,23 +263,6 @@ def compute_time_series_data():
     
     return result
 
-def get_time_series_for_district(district_key):
-    """Get time series data for a specific district"""
-    if USE_PRECOMPUTED:
-        all_ts = load_precomputed_time_series()
-        # Try different key formats
-        for key in [district_key, district_key.lower().strip()]:
-            if key in all_ts:
-                return all_ts[key]
-        # Try matching by district name in key
-        for k, v in all_ts.items():
-            if '|' in k and k.split('|')[1].lower().strip() == district_key.lower().strip():
-                return v
-        return {}
-    else:
-        all_ts = compute_time_series_data()
-        return all_ts.get(district_key.lower().strip(), {})
-
 # Route for the main page
 @app.route('/')
 def index():
@@ -298,55 +293,43 @@ def get_all_districts():
 def get_district_data(district_name):
     try:
         aggregates = compute_district_aggregates()
+        time_series = compute_time_series_data()
         
         district_key = district_name.lower().strip()
         
-        # For precomputed data, try to match with state|district key format
-        matching_data = None
-        if USE_PRECOMPUTED:
-            for key, val in aggregates.items():
-                if '|' in key and key.split('|')[1].lower().strip() == district_key:
-                    matching_data = val
-                    break
-                elif key.lower().strip() == district_key:
-                    matching_data = val
-                    break
-        else:
-            matching_data = aggregates.get(district_key)
-        
-        if matching_data:
-            data = matching_data
-            ts_data = get_time_series_for_district(district_key)
+        if district_key in aggregates:
+            data = aggregates[district_key]
+            ts_data = time_series.get(district_key, {})
             
             response = {
-                'district': data.get('district', district_name),
-                'state': data.get('state', 'Unknown'),
+                'district': data['district'],
+                'state': data['state'],
                 
                 # Enrolment metrics
-                'total_enrolments': int(data.get('total_enrolments', 0)),
-                'enrol_0_5': int(data.get('enrol_0_5', 0)),
-                'enrol_5_17': int(data.get('enrol_5_17', 0)),
-                'enrol_18_plus': int(data.get('enrol_18_plus', 0)),
-                'adult_enrolment_share': round(data.get('adult_enrolment_share', 0), 2),
-                'child_enrolment_share': round(data.get('child_enrolment_share', 0), 2),
+                'total_enrolments': int(data['total_enrolments']),
+                'enrol_0_5': int(data['enrol_0_5']),
+                'enrol_5_17': int(data['enrol_5_17']),
+                'enrol_18_plus': int(data['enrol_18_plus']),
+                'adult_enrolment_share': round(data['adult_enrolment_share'], 2),
+                'child_enrolment_share': round(data['child_enrolment_share'], 2),
                 
                 # Demographic metrics
-                'total_demo_updates': int(data.get('total_demo_updates', 0)),
-                'demo_5_17': int(data.get('demo_5_17', 0)),
-                'demo_18_plus': int(data.get('demo_18_plus', 0)),
+                'total_demo_updates': int(data['total_demo_updates']),
+                'demo_5_17': int(data['demo_5_17']),
+                'demo_18_plus': int(data['demo_18_plus']),
                 
                 # Biometric metrics
-                'total_bio_updates': int(data.get('total_bio_updates', 0)),
-                'bio_5_17': int(data.get('bio_5_17', 0)),
-                'bio_18_plus': int(data.get('bio_18_plus', 0)),
+                'total_bio_updates': int(data['total_bio_updates']),
+                'bio_5_17': int(data['bio_5_17']),
+                'bio_18_plus': int(data['bio_18_plus']),
                 
                 # Derived metrics
-                'identity_volatility': round(data.get('identity_volatility', 0), 4),
-                'adult_bio_compliance': round(min(data.get('adult_bio_compliance', 0), 100), 2),
-                'child_bio_compliance': round(min(data.get('child_bio_compliance', 0), 100), 2),
-                'lifecycle_integrity': round(data.get('lifecycle_integrity', 0), 4),
-                'maintenance_imbalance': round(data.get('maintenance_imbalance', 0), 4),
-                'district_typology': data.get('district_typology', 'Unknown'),
+                'identity_volatility': round(data['identity_volatility'], 4),
+                'adult_bio_compliance': round(min(data['adult_bio_compliance'], 100), 2),
+                'child_bio_compliance': round(min(data['child_bio_compliance'], 100), 2),
+                'lifecycle_integrity': round(data['lifecycle_integrity'], 4),
+                'maintenance_imbalance': round(data['maintenance_imbalance'], 4),
+                'district_typology': data['district_typology'],
                 
                 # Time series data
                 'time_series': ts_data
@@ -386,9 +369,6 @@ def get_district_data(district_name):
 @app.route('/api/stats/summary')
 def get_summary_stats():
     try:
-        if USE_PRECOMPUTED:
-            return jsonify(load_precomputed_summary())
-        
         aggregates = compute_district_aggregates()
         
         df = pd.DataFrame(aggregates.values())
@@ -406,17 +386,15 @@ def get_summary_stats():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Vercel serverless handler
-app_handler = app
-
 if __name__ == '__main__':
-    # Pre-load datasets on startup for local development
-    if not USE_PRECOMPUTED:
-        print("Starting server and loading datasets...")
-        load_datasets()
-        compute_district_aggregates()
-        compute_time_series_data()
-        print("Datasets loaded. Starting Flask server...")
-    else:
-        print("Starting server with pre-computed data...")
+    # Pre-load datasets on startup
+    print("Starting server and loading datasets...")
+    load_datasets()
+    compute_district_aggregates()
+    compute_time_series_data()
+    print("Datasets loaded. Starting Flask server...")
     app.run(debug=True, port=5000)
+
+# Vercel serverless handler
+# This is required for Vercel deployment
+app = app

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India District Map - Aadhaar Analytics</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .map-section {
+            flex: 1;
+            position: relative;
+            background: #1a1a2e;
+            margin: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(138,43,226,0.2);
+            overflow: hidden;
+            border: 1px solid rgba(138,43,226,0.3);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        #map {
+            width: 100%;
+            height: calc(100vh - 160px);
+        }
+
+        .district {
+            fill: #e0e0e0;
+            stroke: #2a2a40;
+            stroke-width: 0.5px;
+            stroke-opacity: 0.6;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .district:hover {
+            fill: #ffd700;
+            stroke: #bb86fc;
+            stroke-width: 1.5px;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(22,33,62,0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5), 0 0 20px rgba(187,134,252,0.2);
+            font-size: 13px;
+            border: 1px solid rgba(187,134,252,0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .legend h3 {
+            margin-bottom: 15px;
+            color: #bb86fc;
+            font-size: 16px;
+            border-bottom: 2px solid #bb86fc;
+            padding-bottom: 8px;
+            text-shadow: 0 0 10px rgba(187,134,252,0.5);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            color: #e0e0e0;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+            border: 1px solid rgba(187,134,252,0.4);
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 15px;
+            background: rgba(22,33,62,0.98);
+            color: white;
+            border-radius: 8px;
+            pointer-events: none;
+            font-size: 13px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5), 0 0 20px rgba(187,134,252,0.4);
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 300px;
+            z-index: 1000;
+            border: 1px solid rgba(187,134,252,0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        .tooltip h4 {
+            margin-bottom: 10px;
+            color: #bb86fc;
+            font-size: 16px;
+            border-bottom: 1px solid rgba(187,134,252,0.5);
+            padding-bottom: 5px;
+            text-shadow: 0 0 10px rgba(187,134,252,0.6);
+        }
+
+        .tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 0;
+        }
+
+        .tooltip-label {
+            color: #aaa;
+            margin-right: 15px;
+        }
+
+        .tooltip-value {
+            font-weight: bold;
+            color: white;
+        }
+
+        .info-panel {
+            width: 350px;
+            background: #16213e;
+            margin: 20px 20px 20px 0;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(138,43,226,0.2);
+            padding: 25px;
+            overflow-y: auto;
+            border: 1px solid rgba(138,43,226,0.3);
+        }
+
+        .info-panel h2 {
+            color: #bb86fc;
+            margin-bottom: 20px;
+            font-size: 22px;
+            border-bottom: 3px solid #bb86fc;
+            padding-bottom: 10px;
+            text-shadow: 0 0 10px rgba(187,134,252,0.5);
+        }
+
+        .data-card {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3), 0 0 10px rgba(106,17,203,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .data-card h3 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .data-card .value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(187,134,252,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .stat-item .label {
+            font-size: 12px;
+            color: #bb86fc;
+            margin-bottom: 5px;
+        }
+
+        .stat-item .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #bb86fc;
+        }
+
+        .controls {
+            padding: 15px 20px;
+            background: rgba(22,33,62,0.8);
+            border-bottom: 1px solid rgba(187,134,252,0.2);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .controls button {
+            padding: 8px 16px;
+            background: rgba(187,134,252,0.2);
+            color: #bb86fc;
+            border: 1px solid rgba(187,134,252,0.5);
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .controls button:hover {
+            background: rgba(187,134,252,0.3);
+            border-color: #bb86fc;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(187,134,252,0.3);
+        }
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .controls button:hover {
+            background: #764ba2;
+        }
+
+        .controls button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="map-section">
+            <div class="header">
+                <h1>🇮🇳 India District Aadhaar Analytics Dashboard</h1>
+                <p>Interactive visualization of district-wise data - Hover over districts for details</p>
+            </div>
+            <div class="controls">
+                <button onclick="resetZoom()">Reset Zoom</button>
+                <button onclick="toggleLegend()">Toggle Legend</button>
+            </div>
+            <div id="map">
+                <div class="loading">Loading map data...</div>
+            </div>
+            <div class="legend" id="legend">
+                <h3>Map Legend</h3>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e0e0e0;"></div>
+                    <span>Default State</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffd700;"></div>
+                    <span>Hover State</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4CAF50;"></div>
+                    <span>High Enrollment (&gt;90%)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #FF9800;"></div>
+                    <span>Medium Enrollment (70-90%)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #F44336;"></div>
+                    <span>Low Enrollment (&lt;70%)</span>
+                </div>
+            </div>
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+        
+        <div class="info-panel">
+            <h2>District Information</h2>
+            <div id="district-info">
+                <p style="color: #999; text-align: center; margin-top: 50px;">
+                    Click on any district to view detailed information
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Map dimensions
+        const width = document.getElementById('map').clientWidth;
+        const height = document.getElementById('map').clientHeight;
+
+        // Create SVG
+        const svg = d3.select("#map")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        const g = svg.append("g");
+
+        // Zoom behavior
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+
+        svg.call(zoom);
+
+        // Projection for India
+        const projection = d3.geoMercator()
+            .center([78.9629, 22.5937])
+            .scale(1000)
+            .translate([width / 2, height / 2]);
+
+        const path = d3.geoPath().projection(projection);
+
+        // Tooltip
+        const tooltip = d3.select("#tooltip");
+
+        // Color scale for enrollment rate
+        const colorScale = d3.scaleThreshold()
+            .domain([70, 90])
+            .range(["#ff6b6b", "#feca57", "#48dbfb"]);
+
+        // Create a group for labels
+        const labelGroup = g.append("g").attr("class", "labels");
+
+        // Load GeoJSON data
+        d3.json("/api/geojson").then(function(data) {
+            // Remove loading message
+            d3.select(".loading").remove();
+
+            // Draw districts
+            g.selectAll("path")
+                .data(data.features)
+                .enter()
+                .append("path")
+                .attr("d", path)
+                .attr("class", "district")
+                .attr("fill", d => {
+                    // Random enrollment rate for demo
+                    const rate = Math.random() * 100;
+                    return colorScale(rate);
+                })                .attr("stroke", "#2a2a40")
+                .attr("stroke-width", "0.5px")
+                .attr("stroke-opacity", "0.6")                .on("mouseover", function(event, d) {
+                    const districtName = d.properties.NAME_2 || "Unknown";
+                    const stateName = d.properties.NAME_1 || "Unknown";
+                    
+                    // Highlight district
+                    d3.select(this)
+                        .style("stroke", "#bb86fc")
+                        .style("stroke-width", "2px")
+                        .style("filter", "brightness(1.2)");
+
+                    // Get centroid for label placement
+                    const centroid = path.centroid(d);
+                    
+                    // Add text labels on the map
+                    labelGroup.append("text")
+                        .attr("class", "district-label")
+                        .attr("x", centroid[0])
+                        .attr("y", centroid[1] - 10)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "14px")
+                        .style("font-weight", "bold")
+                        .style("fill", "#ffffff")
+                        .style("pointer-events", "none")
+                        .style("text-shadow", "2px 2px 8px rgba(0,0,0,0.9), -2px -2px 8px rgba(0,0,0,0.9), 2px -2px 8px rgba(0,0,0,0.9), -2px 2px 8px rgba(0,0,0,0.9), 0 0 15px rgba(187,134,252,0.8)")
+                        .text(districtName);
+                    
+                    labelGroup.append("text")
+                        .attr("class", "state-label")
+                        .attr("x", centroid[0])
+                        .attr("y", centroid[1] + 8)
+                        .attr("text-anchor", "middle")
+                        .style("font-size", "11px")
+                        .style("fill", "#bb86fc")
+                        .style("pointer-events", "none")
+                        .style("text-shadow", "1px 1px 6px rgba(0,0,0,0.9), -1px -1px 6px rgba(0,0,0,0.9), 1px -1px 6px rgba(0,0,0,0.9), -1px 1px 6px rgba(0,0,0,0.9)")
+                        .text(stateName);
+
+                    // Show tooltip
+                    const rate = Math.random() * 100;
+                    tooltip.html(`
+                        <h4>${districtName}</h4>
+                        <div class="tooltip-row">
+                            <span class="tooltip-label">State:</span>
+                            <span class="tooltip-value">${stateName}</span>
+                        </div>
+                        <div class="tooltip-row">
+                            <span class="tooltip-label">District:</span>
+                            <span class="tooltip-value">${districtName}</span>
+                        </div>
+                        <div class="tooltip-row">
+                            <span class="tooltip-label">Enrollment Rate:</span>
+                            <span class="tooltip-value">${rate.toFixed(1)}%</span>
+                        </div>
+                        <div class="tooltip-row">
+                            <span class="tooltip-label">Status:</span>
+                            <span class="tooltip-value">${rate > 90 ? 'High' : rate > 70 ? 'Medium' : 'Low'}</span>
+                        </div>
+                    `)
+                    .classed("visible", true)
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 15) + "px");
+                })
+                .on("mousemove", function(event) {
+                    tooltip
+                        .style("left", (event.pageX + 15) + "px")
+                        .style("top", (event.pageY - 15) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(this)
+                        .style("stroke", "#2a2a40")
+                        .style("stroke-width", "0.5px")
+                        .style("filter", null);
+                    
+                    // Remove labels
+                    labelGroup.selectAll(".district-label").remove();
+                    labelGroup.selectAll(".state-label").remove();
+                    
+                    tooltip.classed("visible", false);
+                })
+                .on("click", function(event, d) {
+                    const districtName = d.properties.NAME_2 || "Unknown";
+                    loadDistrictData(districtName);
+                });
+
+            console.log("Map loaded successfully with", data.features.length, "districts");
+        }).catch(function(error) {
+            console.error("Error loading GeoJSON:", error);
+            d3.select(".loading").html("Error loading map data");
+        });
+
+        // Load district data
+        function loadDistrictData(districtName) {
+            fetch(`/api/district/${encodeURIComponent(districtName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const infoPanel = document.getElementById('district-info');
+                    infoPanel.innerHTML = `
+                        <div class="data-card">
+                            <h3>District</h3>
+                            <div class="value">${data.district}</div>
+                        </div>
+                        
+                        <div class="data-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                            <h3>Total Population</h3>
+                            <div class="value">${(data.population / 1000000).toFixed(2)}M</div>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="label">Aadhaar Enrolled</div>
+                                <div class="value">${(data.aadhar_enrolled / 1000).toFixed(0)}K</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="label">Biometric Done</div>
+                                <div class="value">${(data.biometric_completed / 1000).toFixed(0)}K</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="label">Demographic</div>
+                                <div class="value">${(data.demographic_updated / 1000).toFixed(0)}K</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="label">Enrollment Rate</div>
+                                <div class="value">${data.enrollment_rate.toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    `;
+                })
+                .catch(error => {
+                    console.error("Error loading district data:", error);
+                });
+        }
+
+        // Reset zoom function
+        function resetZoom() {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+        }
+
+        // Toggle legend
+        function toggleLegend() {
+            const legend = document.getElementById('legend');
+            legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            location.reload(); // Simple approach - reload on resize
+        });
+    </script>
+</body>
+</html>

@@ -57,8 +57,8 @@ function getDistrictColor(typology) {
 // Create a group for labels
 const labelGroup = g.append("g").attr("class", "labels");
 
-// Create a group for state borders (drawn on top). Append to the SVG root so it is on top of other groups.
-const stateBorderGroup = svg.append("g").attr("class", "state-borders");
+// Create a group for state borders (drawn last so it appears on top)
+const stateBorderGroup = g.append("g").attr("class", "state-borders");
 
 // Load all district aggregates FIRST, then load GeoJSON
 fetch('/api/districts/all')
@@ -183,8 +183,8 @@ fetch('/api/districts/all')
         })
         .on("mouseout", function () {
             d3.select(this)
-                .style("stroke", "#475569")
-                .style("stroke-width", "0.8px")
+                .style("stroke", "#94a3b8")
+                .style("stroke-width", "0.5px")
                 .style("filter", null);
 
             // Remove labels

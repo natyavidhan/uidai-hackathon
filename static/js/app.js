@@ -106,28 +106,28 @@ fetch('/api/districts/all')
             const centroid = path.centroid(d);
 
             // Add text labels on the map
-            labelGroup.append("text")
-                .attr("class", "district-label")
-                .attr("x", centroid[0])
-                .attr("y", centroid[1] - 10)
-                .attr("text-anchor", "middle")
-                .style("font-size", "14px")
-                .style("font-weight", "bold")
-                .style("fill", "#1e293b")
-                .style("pointer-events", "none")
-                .style("text-shadow", "1px 1px 3px rgba(255,255,255,0.9), -1px -1px 3px rgba(255,255,255,0.9)")
-                .text(districtName);
+            // labelGroup.append("text")
+            //     .attr("class", "district-label")
+            //     .attr("x", centroid[0])
+            //     .attr("y", centroid[1] - 10)
+            //     .attr("text-anchor", "middle")
+            //     .style("font-size", "14px")
+            //     .style("font-weight", "bold")
+            //     .style("fill", "#1e293b")
+            //     .style("pointer-events", "none")
+            //     .style("text-shadow", "1px 1px 3px rgba(255,255,255,0.9), -1px -1px 3px rgba(255,255,255,0.9)")
+            //     .text(districtName);
 
-            labelGroup.append("text")
-                .attr("class", "state-label")
-                .attr("x", centroid[0])
-                .attr("y", centroid[1] + 8)
-                .attr("text-anchor", "middle")
-                .style("font-size", "11px")
-                .style("fill", "#667eea")
-                .style("pointer-events", "none")
-                .style("text-shadow", "1px 1px 3px rgba(255,255,255,0.9)")
-                .text(stateName);
+            // labelGroup.append("text")
+            //     .attr("class", "state-label")
+            //     .attr("x", centroid[0])
+            //     .attr("y", centroid[1] + 8)
+            //     .attr("text-anchor", "middle")
+            //     .style("font-size", "11px")
+            //     .style("fill", "#667eea")
+            //     .style("pointer-events", "none")
+            //     .style("text-shadow", "1px 1px 3px rgba(255,255,255,0.9)")
+            //     .text(stateName);
 
             // Show summarized tooltip with key metrics
             const districtKey = districtName.toLowerCase().trim();

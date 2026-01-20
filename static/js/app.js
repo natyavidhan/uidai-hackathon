@@ -57,38 +57,41 @@ function getDistrictColor(typology) {
 // Create a group for labels
 const labelGroup = g.append("g").attr("class", "labels");
 
-// Load all district aggregates
+// Create a group for state borders (drawn on top). Append to the SVG root so it is on top of other groups.
+const stateBorderGroup = svg.append("g").attr("class", "state-borders");
+
+// Load all district aggregates FIRST, then load GeoJSON
 fetch('/api/districts/all')
     .then(response => response.json())
     .then(data => {
         allDistrictAggregates = data;
         console.log("Loaded district aggregates for", Object.keys(data).length, "districts");
+        
+        // Now load and render district GeoJSON with the district data available
+        return d3.json("/api/geojson");
     })
-    .catch(error => console.error("Error loading district aggregates:", error));
+    .then(function (data) {
+        // Remove loading message
+        d3.select(".loading").remove();
 
-// Load GeoJSON data
-d3.json("/api/geojson").then(function (data) {
-    // Remove loading message
-    d3.select(".loading").remove();
-
-    // Draw districts
-    g.selectAll("path")
-        .data(data.features)
-        .enter()
-        .append("path")
-        .attr("d", path)
-        .attr("class", "district")
-        .attr("fill", d => {
-            const districtName = (d.properties.NAME_2 || "").toLowerCase().trim();
-            const districtData = allDistrictAggregates[districtName];
-            if (districtData) {
-                return getDistrictColor(districtData.district_typology);
-            }
-            return '#d1d5db';
-        })
-        .attr("stroke", "#94a3b8")
-        .attr("stroke-width", "0.5px")
-        .attr("stroke-opacity", "0.8")
+        // Draw districts
+        g.selectAll("path")
+            .data(data.features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("class", "district")
+            .attr("fill", d => {
+                const districtName = (d.properties.NAME_2 || "").toLowerCase().trim();
+                const districtData = allDistrictAggregates[districtName];
+                if (districtData) {
+                    return getDistrictColor(districtData.district_typology);
+                }
+                return '#d1d5db';
+            })
+        .attr("stroke", "#475569")
+        .attr("stroke-width", "0.8px")
+        .attr("stroke-opacity", "0.5")
         .on("mouseover", function (event, d) {
             const districtName = d.properties.NAME_2 || "Unknown";
             const stateName = d.properties.NAME_1 || "Unknown";
@@ -180,8 +183,8 @@ d3.json("/api/geojson").then(function (data) {
         })
         .on("mouseout", function () {
             d3.select(this)
-                .style("stroke", "#94a3b8")
-                .style("stroke-width", "0.5px")
+                .style("stroke", "#475569")
+                .style("stroke-width", "0.8px")
                 .style("filter", null);
 
             // Remove labels
@@ -203,21 +206,27 @@ d3.json("/api/geojson").then(function (data) {
 
     console.log("Map loaded successfully with", data.features.length, "districts");
 
-    // Recolor districts after aggregates are loaded
-    setTimeout(() => {
-        g.selectAll("path.district")
-            .attr("fill", function (d) {
-                const districtName = (d.properties.NAME_2 || "").toLowerCase().trim();
-                const districtData = allDistrictAggregates[districtName];
-                if (districtData) {
-                    return getDistrictColor(districtData.district_typology);
-                }
-                return '#6b7280';
-            });
-    }, 2000);
+    // Load and draw state borders on top
+    d3.json("/static/india_state.geojson").then(function (stateData) {
+        stateBorderGroup.selectAll("path")
+            .data(stateData.features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("class", "state-border")
+            .attr("fill", "none")
+            .attr("stroke", "#000000")
+            .attr("stroke-width", "0.5px")
+            .attr("stroke-opacity", "1")
+            .style("pointer-events", "none");
+        
+        console.log("State borders loaded successfully");
+    }).catch(function (error) {
+        console.error("Error loading state borders:", error);
+    });
 
 }).catch(function (error) {
-    console.error("Error loading GeoJSON:", error);
+    console.error("Error loading map/data:", error);
     d3.select(".loading").html("Error loading map data");
 });
 

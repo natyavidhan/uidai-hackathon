@@ -17,7 +17,7 @@ app = Flask(__name__,
 GITHUB_BASE_URL = "https://raw.githubusercontent.com/natyavidhan/uidai-hackathon/master/datasets"
 
 # For local development, fallback to local files
-DATASETS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'datasets')
+DATASETS_PATH = os.path.join(os.path.dirname(__file__), 'datasets')
 USE_REMOTE = os.environ.get('VERCEL', False) or os.environ.get('USE_REMOTE', 'false').lower() == 'true'
 
 def load_csv_from_url(url):

@@ -1,4 +1,4 @@
-# UIDAI Hackathon - Aadhaar Analytics Dashboard
+# Aadhaar Atlas
 
 An interactive district-level Aadhaar analytics dashboard with visualizations for enrolment, demographic updates, and biometric updates.
 
@@ -10,6 +10,7 @@ An interactive district-level Aadhaar analytics dashboard with visualizations fo
 - 📱 Responsive design
 - 🔍 District-level analytics with derived metrics
 - ⚡ Fast performance with LRU caching
+- 🌐 Deploys to Vercel with remote data loading
 
 ## Tech Stack
 

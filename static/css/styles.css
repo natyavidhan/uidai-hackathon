@@ -55,24 +55,42 @@ body {
 }
 
 .district {
-    fill: #e8ecf1;
-    stroke: #cbd5e1;
-    stroke-width: 0.5px;
-    stroke-opacity: 0.8;
+    /* fill color is set by JavaScript based on typology */
+    stroke: #475569;
+    stroke-width: 0.8px;
+    stroke-opacity: 0.5;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease;
 }
 
 .district:hover {
-    fill: #fef3c7;
+    /* Keep the fill color, just enhance the stroke */
     stroke: #667eea;
-    stroke-width: 1.5px;
+    stroke-width: 2px;
 }
 
 .district.selected {
     stroke: #667eea;
     stroke-width: 2.5px;
     filter: drop-shadow(0 0 4px rgba(102, 126, 234, 0.5));
+}
+
+.state-border {
+    fill: none;
+    stroke: #1e293b;
+    stroke-width: 2px;
+    stroke-opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Ensure the state borders group is visually above other elements */
+.state-borders {
+    /* For SVG groups z-index isn't always respected; appending the group to the SVG root
+       ensures DOM order places it on top. Still set a high z-index for environments
+       where SVG is positioned. Also disable pointer events at the group level. */
+    position: relative;
+    z-index: 9999;
+    pointer-events: none;
 }
 
 .legend {

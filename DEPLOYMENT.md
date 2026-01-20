@@ -1,4 +1,4 @@
-# UIDAI Hackathon - District Analytics Dashboard
+# Aadhaar Atlas - Deployment Guide
 
 ## Vercel Deployment Setup
 
